@@ -1,0 +1,72 @@
+﻿@page "/weatherCancellation"
+@rendermode InteractiveServer
+
+@using CancellationToken.Shared.DTOs
+@using CancellationToken.Shared.Interfaces
+@inject IWeatherForecastExchangeWithCancellation weatherForecastExchange
+
+<PageTitle>Weather</PageTitle>
+
+<h1>Weather</h1>
+
+<p>This component demonstrates showing data.</p>
+
+@if (forecasts == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Temp. (C)</th>
+                <th>Temp. (F)</th>
+                <th>Summary</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var forecast in forecasts)
+            {
+                <tr>
+                    <td>@forecast.Date.ToShortDateString()</td>
+                    <td>@forecast.TemperatureC</td>
+                    <td>@forecast.TemperatureF</td>
+                    <td>@forecast.Summary</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <input @oninput="textChanged" type="text" />
+}
+
+@code {
+    private List<WeatherForecastDTO>? forecasts;
+
+    private CancellationTokenSource _cts = new CancellationTokenSource();
+
+    protected override async Task OnInitializedAsync()
+    {
+        forecasts = await weatherForecastExchange.GetAll(DateTime.Now, _cts.Token);
+    }
+
+    private async Task textChanged(ChangeEventArgs e)
+    {
+        _cts.Cancel();
+        _cts = new CancellationTokenSource();
+        try
+        {
+            forecasts = await weatherForecastExchange.GetAll(DateTime.Now, _cts.Token);
+        }
+        catch (TaskCanceledException ex)
+        {
+            Console.WriteLine($"Task Canceled: {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
+}
